@@ -1,16 +1,19 @@
 import socket
+import time
 from collections import defaultdict
+from cachetools import LRUCache
 
 from dns_message.message import DNSMessage
 from dns_message.answer import DNSAnswer
-from consts import RRType, UDP_MESSAGE_SIZE
+from consts import RRType, UDP_MESSAGE_SIZE, DEFAULT_TTL
 
 
 class DNSResolver:
-    def __init__(self, bind_path="data/bind.txt", remote_ip='1.1.1.1', remote_port=53) -> None:
+    def __init__(self, bind_path="data/bind.txt", remote_ip='1.1.1.1', remote_port=53, cache_size=10000) -> None:
         self.bind_path = bind_path
         self.remote_ip = remote_ip
         self.remote_port = remote_port
+        self.cache = LRUCache(maxsize=cache_size)
         self._load_static_records()
 
     def listen(self, host_ip: str, port=53) -> None:
@@ -28,7 +31,7 @@ class DNSResolver:
                             if q.qtype == 1 and q.qname in self._domain_to_ip:
                                 answers.extend(self._resolve_local(q.qname))
                             else:
-                                answers.extend(self._resolve_remote(data))
+                                answers.extend(self._resolve_remote(q.qname, data))
 
                         message.build_response(answers)
                         s.sendto(message.to_bytes(), client_addr)
@@ -47,21 +50,29 @@ class DNSResolver:
                 name=domain,
                 rtype=1,
                 rclass=1,
-                ttl=3600,
+                ttl=DEFAULT_TTL,
                 rdlength=4,
                 rdata=socket.inet_aton(ip)
                 )
             for ip in self._domain_to_ip[domain]]
 
-    def _resolve_remote(self, data: bytes):
+    def _resolve_remote(self, domain: str, data: bytes):
         print("Resolve remote...")
+        if domain in self.cache:
+            answers, exp_time = self.cache[domain]
+            if time.time() < exp_time:
+                return answers
+
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
                 s.settimeout(5)
                 s.sendto(data, (self.remote_ip, self.remote_port))
                 remote_data, _ = s.recvfrom(UDP_MESSAGE_SIZE)
                 message = DNSMessage(remote_data)
-                return message.answers
+                answers = message.answers
+                exp_time = time.time() + min([a.ttl for a in answers])
+                self.cache[domain] = (answers, exp_time)
+                return answers
 
         except socket.timeout:
             print(f"Timeout occurred while querying {self.remote_ip}:{self.remote_port}")
