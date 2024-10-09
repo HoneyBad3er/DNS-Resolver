@@ -59,7 +59,7 @@ class DNSMessage:
         self.header.ancount = len(answers)
         self.header.qr = 1
         self.header.ra = 1
-        self.header.rcode = 1
+        self.header.rcode = 0
 
     @staticmethod
     def _qname_to_bytes(name: str) -> bytes:
