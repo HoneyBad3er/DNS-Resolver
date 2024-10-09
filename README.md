@@ -9,8 +9,8 @@ Simple DNS-resolver server. Works with type-A records locally (from static bind 
   * Queries per second:   31772.272661
 
 ## Ho to run:
-* Requires: python 3.10+
-* `python dns_resolver/manage.py` - run dns-resolver on localhost:1053
+* `docker build -t dns-img .`
+* `docker run -p 1053:53/tcp -p 1053:53/udp --name dns-test dns-img --bind_path=fake_dns_records_10k.txt` - run dns-resolver on localhost:1053
 
 ## How to test:
 * `dig @localhost -p 1053 example.com +noedns`
