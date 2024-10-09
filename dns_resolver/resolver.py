@@ -25,7 +25,6 @@ class DNSResolver:
                     try:
                         data, client_addr = s.recvfrom(UDP_MESSAGE_SIZE)
                         message = DNSMessage(data)
-
                         answers = []
                         for q in message.questions:
                             if q.qtype == 1 and q.qname in self._domain_to_ip:
@@ -44,7 +43,7 @@ class DNSResolver:
                 print(f"Error binding socket: {e}")
 
     def _resolve_local(self, domain: str):
-        print("Resolve local...")
+        # print("Resolve local...")
         return [
             DNSAnswer(
                 name=domain,
@@ -57,7 +56,7 @@ class DNSResolver:
             for ip in self._domain_to_ip[domain]]
 
     def _resolve_remote(self, domain: str, data: bytes):
-        print("Resolve remote...")
+        # print("Resolve remote...")
         if domain in self.cache:
             answers, exp_time = self.cache[domain]
             if time.time() < exp_time:
@@ -70,7 +69,7 @@ class DNSResolver:
                 remote_data, _ = s.recvfrom(UDP_MESSAGE_SIZE)
                 message = DNSMessage(remote_data)
                 answers = message.answers
-                exp_time = time.time() + min([a.ttl for a in answers])
+                exp_time = time.time() + min([a.ttl for a in answers] + [DEFAULT_TTL])
                 self.cache[domain] = (answers, exp_time)
                 return answers
 

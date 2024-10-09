@@ -9,7 +9,7 @@ def run(host_ip=None, port=1053):
         localhost = socket.gethostname()
         host_ip = socket.gethostbyname(localhost)
 
-    resolver = DNSResolver(bind_path="./bind.example.txt")
+    resolver = DNSResolver(bind_path="data/fake_dns_records_10k.txt")
     resolver.listen(host_ip=host_ip, port=port)
 
 
